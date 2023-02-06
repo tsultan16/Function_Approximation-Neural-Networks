@@ -39,11 +39,19 @@
 
         L(w) =  (1/N) * sum_i =[1 to N] (p_i - y_i)^2 
 
-    This loss function L is a function of the weights. Smaller the loss, greater the accuracy of our approximation. The goal then is to find a combination of weights that will minimize the loss function, i.e. dL/dw (w_min) = 0. (This could be either a minima or a maxima, but that won't be an issue because we'll use gradient descent). To find the (local or glabal) minimum of L(w), we can use the 'gradient descent approach'. I.e. we batch_lo with some arbitrary initial value of the weights, w_* = (w_0_8, w_1_*, ...,w_N_*), then evaluate the loss function gradient at this value, dL/dw (w_*), then we translate the weights values in the direction of the minima (i.e. in the direction of downward slope, or negative gradient) by a small amount proportional to the gradient :
+    This loss function L is a function of the weights. Smaller the loss, greater the accuracy of our approximation. The goal then is to
+    find a combination of weights that will minimize the loss function, i.e. dL/dw (w_min) = 0. (This could be either a minima or a
+    maxima, but that won't be an issue because we'll use gradient descent). To find the (local or glabal) minimum of L(w), we can use the
+    'gradient descent approach'. I.e. we start with some arbitrary initial value of the weights, w_* = (w_0_8, w_1_*, ...,w_N_*), then
+    evaluate the loss function gradient at this value, dL/dw (w_*), then we translate the weights values in the direction of the minima
+    (i.e. in the direction of downward slope, or negative gradient) by a small amount proportional to the gradient :
     
         w_*_updated = w_*_old - a * dL/dw (w_*_old)
 
-    where 'a' is a porportionality constant (also referred to as the "learning rate"). We want 'a' to be small enough so that we don't overshoot the loss function minima. We itertate this pocess of upodating the weights and re-evauating the loss fcuntion gradient until we reach a point where the gradient value becomes sufficiently close to zero indicating that we're near the minima. Then we copute the approximate values p using these latest weights and we're done!        
+    where 'a' is a porportionality constant (also referred to as the "learning rate"). We want 'a' to be small enough so that we don't 
+    the loss function minima. We itertate this pocess of upodating the weights and re-evauating the loss fcuntion gradient until we
+    reach a point where the gradient value becomes sufficiently close to zero indicating that we're near the minima. Then we copute the
+    approximate values p using these latest weights and we're done!        
 
 '''
 
