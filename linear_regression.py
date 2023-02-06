@@ -61,15 +61,15 @@ def forward_loss(X_batch: np.ndarray, y_batch: np.ndarray, weights: Dict[str, np
     assert X_batch.shape[1] == weights['W'].shape[0], "Matrix shapes don't allow multiplication"
 
     # make sure that B is a 1x1 array
-    assert weights['B'].shape[0] == weights['B'].shape[1] == 1, "B needs to be a 1x1 array"
+    assert weights['W0'].shape[0] == weights['W0'].shape[1] == 1, "W0 needs to be a 1x1 array"
 
     # dot product of weights with X
     N = np.dot(X_batch, weights['W'])
 
     # compute predictions
-    P = N + weights['B']
+    P = N + weights['W0']
 
-    # compute loss
+    # compute loss function
     loss = np.mean(np.power(y_batch-P, 2))  
 
     # save information computed on this forward pass
@@ -92,7 +92,7 @@ def loss_gradients(forward_info: Dict[str, np.ndarray], weights: Dict[str, np.nd
     dP_dN = np.ones_like(forward_info['N'])
  
     # dP/dB
-    dP_dB = np.ones_like(weights['B'])
+    dP_dB = np.ones_like(weights['W0'])
 
     # dL/dN
     dL_dN = dL_dP * dP_dN
@@ -109,7 +109,7 @@ def loss_gradients(forward_info: Dict[str, np.ndarray], weights: Dict[str, np.nd
 
     loss_gradients : Dict[str, np.ndarray] = {}
     loss_gradients['W'] = dL_dW
-    loss_gradients['B'] = dL_dB
+    loss_gradients['W0'] = dL_dB
 
     return loss_gradients
 
@@ -134,7 +134,7 @@ def init_weights(n_in: int) -> Dict[str, np.ndarray]:
     weights: Dict[str, np.ndarray] = {}
 
     weights['W'] = np.random.randn(n_in, 1)
-    weights['B'] = np.random.randn(1, 1)
+    weights['W0'] = np.random.randn(1, 1)
 
     return weights
 
@@ -177,8 +177,8 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
         loss_grads = loss_gradients(forward_info, weights)
 
         # update the weights
-        weights['W'] -= learning_rate * loss_grads['W']     
-        weights['B'] -= learning_rate * loss_grads['B']     
+        weights['W']  -= learning_rate * loss_grads['W']     
+        weights['W0'] -= learning_rate * loss_grads['W0']     
 
     print("Training complete!")
     print("P = ")
