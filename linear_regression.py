@@ -5,11 +5,11 @@
 
     In this problem, we have a quantity 'y' whose value depends on N different features (i.e. independant variables) 'x = (x_1, x_2, x_3, ..., x_N)'
 
-    We define a quantity 'p' that is an approximation to 'y' and hypothesize that there is a linear relationship between p and x, i.e.
+    We hypothesize that there is a linear relationship between y and x, and define a quantity 'p' which is an approximation to 'y':
 
         p(x) = w_0 + w_1*x_1 + w_2*x_2 + w_3*x_3 + ... + x_N*x_N
 
-    where w = (w_i, i = 0, 2, 3.., N) are constant 'weights'. 
+    where w = (w_i, i = 0, 1, 2, 3.., N) are constant 'weights'. 
 
     Now, given a data sample containing 'K' differenct observations of y and corresponding x =(x_k_1, x_k_2, ...,x_k_N) of each:
 
@@ -112,12 +112,12 @@ def compute_loss_gradient(forward_info: Dict[str, np.ndarray], weights: Dict[str
 
     return loss_gradient
 
-def init_weights(n_in: int) -> Dict[str, np.ndarray]: 
+def init_weights(N: int) -> Dict[str, np.ndarray]: 
 
     # initialize the weights
     weights: Dict[str, np.ndarray] = {}
 
-    weights['W'] = np.random.randn(n_in, 1)
+    weights['W'] = np.random.randn(N, 1)
     weights['W0'] = np.random.randn(1, 1)
 
     return weights
@@ -188,12 +188,16 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
 ######################################################################################
 
 K = 1000 # number of observations
-N = 10  # number of features
-niterations = 100 # number of gradient descent interations
+N = 50  # number of features
+niterations = 500 # number of gradient descent interations
 
 # generate some test sample data
 X = np.random.randn(K,N)
-y = np.random.randn(K,1)
+#y = np.random.randn(K,1)
+perfect_weights = init_weights(N) 
+y = perfect_weights['W0'] + np.dot(X, perfect_weights['W'])
+for i in range(y.shape[0]):
+    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.5
 
 #print("X = ")
 #print(X)
@@ -202,11 +206,27 @@ y = np.random.randn(K,1)
 
 # train the approximation
 train_info = train(X, y, n_iter = niterations, learning_rate = 0.001, 
-          batch_size = 120,
+          batch_size = 50,
           seed = 182635)
-          
+
 losses = train_info[0]
 weights = train_info[1]
 
+P = weights['W0'] + np.dot(X, weights['W'])
+
+max_y = np.amax(y)
+min_y = np.amin(y)
+max_P = np.amax(P)
+min_P = np.amin(P)
+
+z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
+
+print("max_y = ",max_y)
+print("max_P = ",max_P)
+
+plt.subplot(1,2,1)
 plt.plot(np.arange(len(losses)), losses)
+plt.subplot(1,2,2)
+plt.scatter(P, y, s=2)
+plt.plot(z, z, 'r--')
 plt.show()
