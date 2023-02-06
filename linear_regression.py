@@ -49,7 +49,7 @@
         w_*_updated = w_*_old - a * dL/dw (w_*_old)
 
     where 'a' is a porportionality constant (also referred to as the "learning rate"). We want 'a' to be small enough so that we don't 
-    overshoot the loss function minima. We itertate this pocess of upodating the weights and re-evauating the loss fcuntion gradient
+    overshoot the loss function minima. We iterate this pocess of re-evauating the loss funtion gradient and updating the weights 
     until we reach a point where the gradient value becomes sufficiently close to zero indicating that we're near the minima. Then we
     compute the approximate values p using these latest weights and we're done!        
 
