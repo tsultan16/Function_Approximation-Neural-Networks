@@ -42,7 +42,7 @@
     This loss function L is a function of the weights. Smaller the loss, greater the accuracy of our approximation. The goal then is to
     find a combination of weights that will minimize the loss function, i.e. dL/dw (w_min) = 0. (This could be either a minima or a
     maxima, but that won't be an issue because we'll use gradient descent). To find the (local or glabal) minimum of L(w), we can use the
-    'gradient descent approach'. I.e. we start with some arbitrary initial value of the weights, w_* = (w_0_8, w_1_*, ...,w_N_*), then
+    'gradient descent approach'. I.e. we start with some arbitrary initial value of the weights, w_* = (w_0_*, w_1_*, ...,w_N_*), then
     evaluate the loss function gradient at this value, dL/dw (w_*), then we translate the weights values in the direction of the minima
     (i.e. in the direction of downward slope, or negative gradient) by a small amount proportional to the gradient :
     
