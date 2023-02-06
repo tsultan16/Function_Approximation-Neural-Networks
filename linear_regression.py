@@ -50,7 +50,8 @@
 
     where 'a' is a porportionality constant (also referred to as the "learning rate"). We want 'a' to be small enough so that we don't 
     overshoot the loss function minima. We itertate this pocess of upodating the weights and re-evauating the loss fcuntion gradient
-    until we reach a point where the gradient value becomes sufficiently close to zero indicating that we're near the minima. Then we compute the approximate values p using these latest weights and we're done!        
+    until we reach a point where the gradient value becomes sufficiently close to zero indicating that we're near the minima. Then we
+    compute the approximate values p using these latest weights and we're done!        
 
 '''
 
