@@ -181,7 +181,7 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
     return losses, weights, mabs_err, rms_err, scaled_rms_err
 
 ######################################################################################
-
+'''
 K = 1000 # number of observations
 N = 50  # number of features
 M = 5 # number of hidden layers
@@ -235,3 +235,4 @@ plt.xlabel('# of iterations')
 plt.ylabel('rms_error/y_mean)')
 
 plt.show()
+'''

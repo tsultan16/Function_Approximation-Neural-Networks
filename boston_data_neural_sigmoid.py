@@ -1,7 +1,7 @@
 from sklearn.datasets import load_boston
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from linear_regression import *
+from neural_sigmoid import *
 
 #######################
 # load boston dataset #
@@ -26,17 +26,60 @@ print("X_test shape = ",X_test.shape, ", y_test shape = ",y_test.shape)
 # train the dataset and generate prediction #
 #############################################
 
-K = y_test.shape[0]  # number of test observations
-N = X_test.shape[1]  # number of features
-niterations = 500    # number of gradient descent interations
 
-# train the dataset and generate weights
-train_info = train(X_train, y_train, n_iter = niterations, learning_rate = 0.001, batch_size = 50, seed = 182635)
+################################################
+K = 1000 # number of observations
+N = 50  # number of features
+M = 5 # number of hidden layers
+niterations = 2000 # number of gradient descent interations
+
+# generate some test sample data
+X = np.random.randn(K,N)
+
+# perfect y
+test_weights = init_weights(N,M) 
+y = predict(X, test_weights)
+
+# add some small random deviations
+#for i in range(y.shape[0]):
+#    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.1  
+
+
+# train the approximation
+train_info = train(X, y, n_iter = niterations, hidden_layers = M, learning_rate = 0.001,batch_size = 50, seed = 182635)
 
 losses = train_info[0]
 weights = train_info[1]
+mabs_err = train_info[2]
+rms_err = train_info[3]
+scaled_rms_err = train_info[4]
 
-P_test = prediction(X_test, weights)
+P = predict(X, weights)
+max_y = np.amax(y)
+min_y = np.amin(y)
+max_P = np.amax(P)
+min_P = np.amin(P)
+z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
+
+
+
+############3##################################3
+
+K = y_test.shape[0]  # number of test observations
+N = X_test.shape[1]  # number of features
+M = 13 # number of hidden layers
+niterations = 500    # number of gradient descent interations
+
+# train the dataset and generate weights
+train_info = train(X_train, y_train, n_iter = niterations, hidden_layers = M, learning_rate = 0.001, batch_size = 50, seed = 182635)
+
+losses   = train_info[0]
+weights  = train_info[1]
+mabs_err = train_info[2]
+rms_err  = train_info[3]
+scaled_rms_err = train_info[4]
+
+P_test = predict(X_test, weights)
 
 max_y = np.amax(y_test)
 min_y = np.amin(y_test)
@@ -45,24 +88,18 @@ min_P = np.amin(P_test)
 
 z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
 
-#print("max_y = ",max_y)
-#print("max_P = ",max_P)
 
 # Dependance of target 'y' on it's most important feature, i.e. feature corresponding to the weight with the highest magnitude
 
-#print("W = ")
-#print(weights['W'])
-i_mi = np.argmax(np.abs(weights['W']))
+i_mi = 12 #np.argmax(np.abs(weights['W']))
 #print("Most-important feature index: ", i_mi)
 #print("Value of most important weight: ",weights['W'][i_mi,0])
 mean_X = (1.0 / K) * X_test.sum(axis=0)
 new_X = np.zeros((20*K,N)) + mean_X
-#mean_X[i_mi] = 0
 x_mi = X_test[:,i_mi]
 x_p = np.linspace(np.amin(x_mi), np.amax(x_mi), 20*K)
 new_X[:,i_mi] = x_p
-y_p = weights['W0'] + np.dot(new_X, weights['W'])
-
+y_p = predict(new_X, weights) #weights['W0'] + np.dot(new_X, weights['W'])
 
 plt.subplot(1,3,1)
 plt.plot(np.arange(len(losses)), losses)

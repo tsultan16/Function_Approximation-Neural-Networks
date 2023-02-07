@@ -36,7 +36,7 @@ train_info = train(X_train, y_train, n_iter = niterations, learning_rate = 0.001
 losses = train_info[0]
 weights = train_info[1]
 
-P_test = prediction(X_test, weights)
+P_test = predict(X_test, weights)
 
 max_y = np.amax(y_test)
 min_y = np.amin(y_test)
@@ -56,7 +56,7 @@ new_X = np.zeros((20*K,N)) + mean_X
 x_mi = X_test[:,i_mi]
 x_p = np.linspace(np.amin(x_mi), np.amax(x_mi), 20*K)
 new_X[:,i_mi] = x_p
-y_p = weights['W0'] + np.dot(new_X, weights['W'])
+y_p = predict(new_X, weights) #weights['W0'] + np.dot(new_X, weights['W'])
 
 plt.subplot(1,3,1)
 plt.plot(np.arange(len(losses)), losses)

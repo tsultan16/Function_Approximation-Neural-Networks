@@ -121,7 +121,7 @@ def compute_loss_gradient(forward_info: Dict[str, np.ndarray], weights: Dict[str
 
     return loss_gradient
 
-def prediction(X: np.ndarray, weights: Dict[str, np.ndarray]) -> np.ndarray:
+def predict(X: np.ndarray, weights: Dict[str, np.ndarray]) -> np.ndarray:
 
     # make sure matrix multiplication is possible
     assert X.shape[1] == weights['W'].shape[0], "Matrix shapes don't allow multiplication"
