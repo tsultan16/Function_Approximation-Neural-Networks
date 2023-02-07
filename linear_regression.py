@@ -5,11 +5,12 @@
 
     In this problem, we have a quantity 'y' whose value depends on N different features (i.e. independant variables) 'x = (x_1, x_2, x_3, ..., x_N)'
 
-    We hypothesize that there is a linear relationship between y and x, and define a quantity 'p' which is an approximation to 'y':
+    We hypothesize that there is a linear relationship between y and its features x, and define a quantity 'p' which is an approximation to 'y':
 
         p(x) = w_0 + w_1*x_1 + w_2*x_2 + w_3*x_3 + ... + x_N*x_N
 
-    where w = (w_i, i = 0, 1, 2, 3.., N) are constant 'weights'. 
+    where w = (w_i, i = 0, 1, 2, 3.., N) are constant 'weights'. 'w_0' is also called a bias, becuase it is the part of the quatity 'y'
+    that remains when all the features are set to zero. 
 
     Now, given a data sample containing 'K' differenct observations of y and corresponding x =(x_k_1, x_k_2, ...,x_k_N) of each:
 
@@ -75,7 +76,7 @@ def compute_loss(X: np.ndarray, y: np.ndarray, weights: Dict[str, np.ndarray]) -
     N = np.dot(X, weights['W'])
 
     # compute predictions
-    P = N + weights['W0']
+    P = N + weights['B']
 
     # compute loss function
     loss = np.mean(np.power(y-P, 2))  
@@ -201,11 +202,14 @@ niterations = 500 # number of gradient descent interations
 
 # generate some test sample data
 X = np.random.randn(K,N)
-#y = np.random.randn(K,1)
-perfect_weights = init_weights(N) 
-y = perfect_weights['W0'] + np.dot(X, perfect_weights['W'])
+
+# linear y
+test_weights = init_weights(N) 
+y = test_weights['W0'] + np.dot(X, test_weights['W'])
+
+# add some small random deviations from linearity
 for i in range(y.shape[0]):
-    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.5
+    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.5  
 
 #print("X = ")
 #print(X)
@@ -234,7 +238,11 @@ print("max_P = ",max_P)
 
 plt.subplot(1,2,1)
 plt.plot(np.arange(len(losses)), losses)
+plt.xlabel('# of iterations')
+plt.ylabel('loss/error')
 plt.subplot(1,2,2)
 plt.scatter(P, y, s=2)
 plt.plot(z, z, 'r--')
+plt.xlabel('P')
+plt.ylabel('y')
 plt.show()

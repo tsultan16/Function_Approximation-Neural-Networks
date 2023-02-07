@@ -22,7 +22,7 @@ def compute_loss(X: np.ndarray, y: np.ndarray, weights: Dict[str, np.ndarray]) -
     O1 = sigmoid(N1)
 
     # compute predictions
-    M2 = np.dot(N1, weights['W2'])
+    M2 = np.dot(O1, weights['W2'])
     P = weights['B2'] + M2
 
     # compute loss function
@@ -48,13 +48,13 @@ def compute_loss_gradient(forward_info: Dict[str, np.ndarray], weights: Dict[str
     dL_dW2 = -(2/forward_info['y'].shape[0]) * np.dot(O1_T, yminusP)
 
     # dL/dB2
-    dL_dB2 = -(2/forward_info['y'].shape[0]) * np.sum(yminusP) * np.ones_like(forward_info['B2'])
+    dL_dB2 = -(2/forward_info['y'].shape[0]) * np.sum(yminusP) * np.ones_like(weights['B2'])
 
     # dL/dW1
     Del = forward_info['O1'] * (1 - forward_info['O1'])
     W2_T = np.transpose(weights['W2'],(1,0))
     R = np.dot(yminusP, W2_T) * Del 
-    X_T = np.transpose(forward_info('X'),(1,0))
+    X_T = np.transpose(forward_info['X'],(1,0))
     dL_dW1 = -(2/forward_info['y'].shape[0]) * np.dot(X_T, R) 
 
     # dL/dB1
@@ -68,6 +68,29 @@ def compute_loss_gradient(forward_info: Dict[str, np.ndarray], weights: Dict[str
     loss_gradient['B2'] = dL_dB2
 
     return loss_gradient
+
+def predict(X: np.ndarray, weights: Dict[str, np.ndarray]) -> np.ndarray:
+    
+    # make sure matrix multiplication is possible
+    assert X.shape[1] == weights['W1'].shape[0], "Matrix shapes don't allow multiplication"
+
+    # dot product of weights with X
+    M1 = np.dot(X, weights['W1'])
+    N1 = weights['B1'] + M1
+
+    # apply sigmoid function
+    O1 = sigmoid(N1)
+    
+    # compute predictions
+    M2 = np.dot(O1, weights['W2'])
+    P = weights['B2'] + M2
+    return P
+
+def mean_absolute_error(P: np.ndarray, y: np.ndarray) -> float:
+    return np.mean(np.abs(y-P))    
+
+def root_mean_squared_error(P: np.ndarray, y: np.ndarray) -> float:
+    return np.sqrt(np.mean(np.power(y-P, 2)))    
 
 def init_weights(N: int, M: int) -> Dict[str, np.ndarray]: 
 
@@ -106,7 +129,12 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
 
     # initialize weights
     weights = init_weights(X.shape[1], hidden_layers) 
+    
     losses = []
+    mabs_err = []
+    rms_err = []
+    scaled_rms_err = []
+    ymean = np.mean(y)
 
     #number of batches
     n_batch = math.ceil(X.shape[0]/batch_size)
@@ -134,33 +162,41 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
             loss_grads = compute_loss_gradient(forward_info, weights)
 
             # update the weights (gradient descent)
-            weights['W']  -= learning_rate * loss_grads['W']     
-            weights['W0'] -= learning_rate * loss_grads['W0']     
+            weights['W1'] -= learning_rate * loss_grads['W1']     
+            weights['B1'] -= learning_rate * loss_grads['B1']     
+            weights['W2'] -= learning_rate * loss_grads['W2']     
+            weights['B2'] -= learning_rate * loss_grads['B2']     
 
         losses.append(total_loss)
 
+        # compute the prediciton and associated errors
+        P = predict(X, weights)
+        mabs_err.append(mean_absolute_error(P,y))  
+        rms =  root_mean_squared_error(P,y)
+        rms_err.append(rms)   
+        scaled_rms_err.append(rms/ymean)   
 
     print("Training complete!")
 
-    return losses, weights
+    return losses, weights, mabs_err, rms_err, scaled_rms_err
 
 ######################################################################################
 
 K = 1000 # number of observations
 N = 50  # number of features
-M = 10 # number of hidden layers
-niterations = 500 # number of gradient descent interations
+M = 5 # number of hidden layers
+niterations = 2000 # number of gradient descent interations
 
 # generate some test sample data
 X = np.random.randn(K,N)
 
-# linear y
-#test_weights = init_weights(N) 
-#y = test_weights['W0'] + np.dot(X, test_weights['W'])
+# perfect y
+test_weights = init_weights(N,M) 
+y = predict(X, test_weights)
 
-# add some small random deviations from linearity
+# add some small random deviations
 #for i in range(y.shape[0]):
-#    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.5  
+#    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.1  
 
 
 # train the approximation
@@ -168,3 +204,34 @@ train_info = train(X, y, n_iter = niterations, hidden_layers = M, learning_rate 
 
 losses = train_info[0]
 weights = train_info[1]
+mabs_err = train_info[2]
+rms_err = train_info[3]
+scaled_rms_err = train_info[4]
+
+P = predict(X, weights)
+max_y = np.amax(y)
+min_y = np.amin(y)
+max_P = np.amax(P)
+min_P = np.amin(P)
+z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
+
+
+plt.subplot(2,2,1)
+plt.plot(np.arange(len(losses)), losses)
+plt.xlabel('# of iterations')
+plt.ylabel('loss')
+plt.subplot(2,2,2)
+plt.scatter(P, y, s=2)
+plt.plot(z, z, 'r--')
+plt.xlabel('P')
+plt.ylabel('y')
+plt.subplot(2,2,3)
+plt.plot(np.arange(len(mabs_err)), mabs_err)
+plt.xlabel('# of iterations')
+plt.ylabel('means_abs_error')
+plt.subplot(2,2,4)
+plt.plot(np.arange(len(scaled_rms_err)), scaled_rms_err)
+plt.xlabel('# of iterations')
+plt.ylabel('rms_error/y_mean)')
+
+plt.show()
