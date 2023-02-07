@@ -76,7 +76,7 @@ def compute_loss(X: np.ndarray, y: np.ndarray, weights: Dict[str, np.ndarray]) -
     N = np.dot(X, weights['W'])
 
     # compute predictions
-    P = N + weights['B']
+    P = N + weights['W0']
 
     # compute loss function
     loss = np.mean(np.power(y-P, 2))  
@@ -120,6 +120,21 @@ def compute_loss_gradient(forward_info: Dict[str, np.ndarray], weights: Dict[str
     loss_gradient['W0'] = dL_dW0
 
     return loss_gradient
+
+def prediction(X: np.ndarray, weights: Dict[str, np.ndarray]) -> np.ndarray:
+
+    # make sure matrix multiplication is possible
+    assert X.shape[1] == weights['W'].shape[0], "Matrix shapes don't allow multiplication"
+
+    # make sure that B is a 1x1 array
+    assert weights['W0'].shape[0] == weights['W0'].shape[1] == 1, "W0 needs to be a 1x1 array"
+
+    # dot product of weights with X
+    N = np.dot(X, weights['W'])
+
+    # compute predictions
+    P = N + weights['W0']
+    return P
 
 def init_weights(N: int) -> Dict[str, np.ndarray]: 
 
@@ -196,8 +211,9 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
 
 ######################################################################################
 
-K = 1000 # number of observations
-N = 50  # number of features
+'''
+K = 500 # number of observations
+N = 10  # number of features
 niterations = 500 # number of gradient descent interations
 
 # generate some test sample data
@@ -210,11 +226,6 @@ y = test_weights['W0'] + np.dot(X, test_weights['W'])
 # add some small random deviations from linearity
 for i in range(y.shape[0]):
     y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.5  
-
-#print("X = ")
-#print(X)
-#print("y = ")
-#print(y)
 
 # train the approximation
 train_info = train(X, y, n_iter = niterations, learning_rate = 0.001, 
@@ -236,13 +247,36 @@ z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*
 print("max_y = ",max_y)
 print("max_P = ",max_P)
 
-plt.subplot(1,2,1)
+# Dependance of target 'y' on it's most important feature, i.e. feature corresponding to the weight with the highest magnitude
+#print("W = ")
+#print(weights['W'])
+i_mi = np.argmax(np.abs(weights['W']))
+#print("Most-important feature index: ", i_mi)
+#print("Value of most important weight: ",weights['W'][i_mi,0])
+mean_X = (1.0 / K) * X.sum(axis=0)
+new_X = np.zeros((20*K,N)) + mean_X
+#mean_X[i_mi] = 0
+x_mi = X[:,i_mi]
+x_p = np.linspace(np.amin(x_mi), np.amax(x_mi), 20*K)
+new_X[:,i_mi] = x_p
+y_p = weights['W0'] + np.dot(new_X, weights['W'])
+
+
+plt.subplot(1,3,1)
 plt.plot(np.arange(len(losses)), losses)
 plt.xlabel('# of iterations')
 plt.ylabel('loss/error')
-plt.subplot(1,2,2)
-plt.scatter(P, y, s=2)
+plt.subplot(1,3,2)
+plt.scatter(P, y, s=4)
 plt.plot(z, z, 'r--')
 plt.xlabel('P')
 plt.ylabel('y')
+plt.subplot(1,3,3)
+plt.scatter(x_mi, y, s=4)
+plt.plot(x_p, y_p, 'r--', linewidth=1)
+plt.xlabel('x_mi')
+plt.ylabel('y')
+
 plt.show()
+
+'''
