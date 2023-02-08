@@ -76,12 +76,13 @@ def predict(X: np.ndarray, weights: Dict[str, np.ndarray]) -> np.ndarray:
 
     # dot product of weights with X
     M1 = np.dot(X, weights['W1'])
+    # add bias term
     N1 = weights['B1'] + M1
 
-    # apply sigmoid function
+    # apply sigmoid function to get output of first layer
     O1 = sigmoid(N1)
     
-    # compute predictions
+    # compute predictions (i.e. output of second layer)
     M2 = np.dot(O1, weights['W2'])
     P = weights['B2'] + M2
     return P
@@ -119,7 +120,7 @@ def generate_batch(X: np.ndarray, y: np.ndarray, batch_lo: int = 0, batch_size: 
     return X_batch, y_batch
 
 def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float = 0.01, 
-          hidden_layers: int = 5, batch_size: int = 10,
+          n_hidden_weights: int = 5, batch_size: int = 10,
           seed: int = 1):
 
     print("Commencing training...")
@@ -128,7 +129,7 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
         np.random.seed(seed)
 
     # initialize weights
-    weights = init_weights(X.shape[1], hidden_layers) 
+    weights = init_weights(X.shape[1], n_hidden_weights) 
     
     losses = []
     mabs_err = []
@@ -200,7 +201,7 @@ y = predict(X, test_weights)
 
 
 # train the approximation
-train_info = train(X, y, n_iter = niterations, hidden_layers = M, learning_rate = 0.001,batch_size = 50, seed = 182635)
+train_info = train(X, y, n_iter = niterations, n_hidden_weights = M, learning_rate = 0.001,batch_size = 50, seed = 182635)
 
 losses = train_info[0]
 weights = train_info[1]

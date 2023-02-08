@@ -67,11 +67,11 @@ z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*
 
 K = y_test.shape[0]  # number of test observations
 N = X_test.shape[1]  # number of features
-M = 13 # number of hidden layers
+M = 13 # number of hidden layer weights
 niterations = 500    # number of gradient descent interations
 
 # train the dataset and generate weights
-train_info = train(X_train, y_train, n_iter = niterations, hidden_layers = M, learning_rate = 0.001, batch_size = 50, seed = 182635)
+train_info = train(X_train, y_train, n_iter = niterations, n_hidden_weights = M, learning_rate = 0.001, batch_size = 50, seed = 182635)
 
 losses   = train_info[0]
 weights  = train_info[1]
@@ -101,16 +101,16 @@ x_p = np.linspace(np.amin(x_mi), np.amax(x_mi), 20*K)
 new_X[:,i_mi] = x_p
 y_p = predict(new_X, weights) #weights['W0'] + np.dot(new_X, weights['W'])
 
-plt.subplot(1,3,1)
-plt.plot(np.arange(len(losses)), losses)
-plt.xlabel('# of iterations')
-plt.ylabel('loss/error')
-plt.subplot(1,3,2)
+#plt.subplot(1,3,1)
+#plt.plot(np.arange(len(losses)), losses)
+#plt.xlabel('# of iterations')
+#plt.ylabel('loss/error')
+plt.subplot(1,2,1)
 plt.scatter(P_test, y_test, s=4)
 plt.plot(z, z, 'r--')
 plt.xlabel('P')
 plt.ylabel('y')
-plt.subplot(1,3,3)
+plt.subplot(1,2,2)
 plt.scatter(x_mi, y_test, s=4)
 plt.plot(x_p, y_p, 'r--', linewidth=1)
 plt.xlabel('x_mi')
