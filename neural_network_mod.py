@@ -4,6 +4,7 @@
 
 import numpy as np
 from typing import Callable, Dict, Tuple, List
+import copy
 
 '''
 function that checks if two arrays have atching shape
@@ -11,6 +12,14 @@ function that checks if two arrays have atching shape
 def assert_same_shape(array1: np.ndarray, array2: np.ndarray) -> None:
     assert array1.shape == array2.shape, "Array shapes do not match"
     return None
+
+'''
+function for shuffling the rows of the given arrays
+'''
+def permute_data(X, y):
+
+    perm = np.random.permutation(X.shape[0])
+    return X[perm], y[perm]
 
 '''
 A generalised base class for neural network operations
@@ -290,9 +299,9 @@ in which the output neurons (features) are a combination of all the input neuron
 '''
 class Dense(Layer):
     '''
-    constructor
+    constructor (note that the default activation function is Linear)
     '''
-    def __init__(self, neurons : int, activation: Operation = Sigmoid()) -> None:
+    def __init__(self, neurons : int, activation: Operation = Linear()) -> None:
         super().__init__(neurons)
         self.activation = activation
 
@@ -382,13 +391,13 @@ The Neural Network Class
 '''        
 class NeuralNetwork(object):
     '''
-    construtor
+    construtor (default loss function is MeanSquaredError)
     '''
-    def __init__(self, layers: List[Layer], loss: Loss, seed: float = 1):
+    def __init__(self, layers: List[Layer], loss: Loss = MeanSquaredError, seed: float = 1):
         # initialize layers and loss function
         self.layers = layers
-        self.loss = loss
-        self.seed = seed
+        self.loss   = loss
+        self.seed   = seed
 
         if(seed):
             for layer in layers:
@@ -446,3 +455,115 @@ class NeuralNetwork(object):
             yield from layer.param_grads
 
 
+'''
+A base optimizer class for updating the Neural Network parameters based on the loss gradients
+'''
+class Optimizer(object):
+    '''
+    constructor (initialize with the learning rate)
+    '''
+    def __init__(self, lr : float):
+        self.lr = lr
+
+    def step(self):
+        # step method needs to be implemented for each optimizer sub class
+        raise NotImplementedError()
+
+'''
+A Stochastic Gradient Descent Optimizer sub-class
+'''
+class SGD(Optimizer):
+    '''
+    constructor
+    '''
+    def __init__(self, lr: float = 0.01):
+        super().__init__(lr)
+
+    '''
+    step method for updating parameters using stochastic gradient decent
+    '''    
+    def step(self):
+
+        # get the params and the corresponding loss gradients and perform updates
+        for (param, param_grad) in zip(self.net.params(), self.net.param_grads):
+            param -= self.lr * param_grad
+
+
+'''
+A class for training a given neural network using a given optimizer
+'''
+class Trainer(object):
+    '''
+    constructor
+    '''
+    def __init__(self, net: NeuralNetwork, optim: Optimizer):
+        self.net = net
+        self.optim = optim
+        self.best_loss = 1e9
+
+        # assign the neural networks as an attribute to the optimizer
+        setattr(self.optim, 'net', self.net)
+
+    '''
+    generator function for creating smaller batches of the training data set
+    '''
+    Batch = Tuple[np.ndarray, np.ndarray]
+    def generate_batch(self, X: np.ndarray, y: np.ndarray, size: int = 32) -> Batch:
+
+        assert X.shape[0] == y.shape[0], "fetaures and target must have same number of rows"        
+
+        N = X.shape[0]
+
+        for ii in range(0,N,size):
+            X_batch = X[ii:ii+size]    
+            y_batch = y[ii:ii+size]    
+            yield X_batch, y_batch
+
+    '''
+    A 'fit' function for guiding the training process on the given data set. Training steps consist of iteration epochs, in
+    each epoch, the data is split into batches, each batch is trained, i.e. passed forward through the layers to compute a prediction, 
+    then passed backward to compute loss gradients and then parameters are updated by the optimizer. An epoch ends when all batches have been trained.
+    '''
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, 
+            opochs: int = 100, eval_every: int = 10, batch_size: int = 32, seed: int = 1, restart: bool = True):
+
+        np.random.seed(seed)
+
+        if restart:
+            for layer in self.net.layers:
+                layer.first = True
+
+            self.best_loss = 1e9
+    
+
+        # iterate over the eopchs
+        for e in range(epochs):
+
+            if(e%eval_every == 0):
+                # for early stopping incase losses start to increase 
+                last_model = copy.deepcopy(self.net)
+
+            # permute data at the beginning of the epoch
+            X_train, y_train = permute_data(X_train, y_train)
+
+            # generate batches
+            batch_generator = self.generate_batch(X_train, y_train, batch_size)
+
+            # iterate over batches and train them
+            for ii, (X_batch, y_batch) in enumerate(batch_generator):
+                
+                self.net.train_batch(X_batch, y_batch)
+                self.optim.step()
+            
+            if(e%eval_every == 0):
+                test_pred = self.net.forward(X_test)
+                test_loss = self.net.loss.forward(test_pred, y_test)
+                print(f"Validation loss after {e+1} epochs is {test_loss: .3f}")
+
+            if test_loss< self.best_loss:
+                self.best_loss = test_loss
+            else:
+                print("Loss has increased since last epoch")
+                # reset the neural network state to what is was at the beginning of the epoch and start a new epoch 
+                setattr(self.optim, 'net', last_model)
+                break
