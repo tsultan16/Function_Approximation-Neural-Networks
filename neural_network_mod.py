@@ -132,7 +132,7 @@ class WeightMultiply(ParamOperation):
     '''
     def _param_grad(self, output_grad: np.ndarray) -> np.ndarray:
         # compute gradient w.r.t. parameters (using chain rule)
-        return np.dot(np.transpose(self._input,(1,0)), output_grad)
+        return np.dot(np.transpose(self.input_,(1,0)), output_grad)
 
 
 '''
@@ -284,7 +284,7 @@ class Layer(object):
     '''
     method for extracting the parameters from each operation
     '''
-    def _param_grads(self) -> None:
+    def _params(self) -> None:
 
         self.params = []
         for operation in self.operations:
@@ -294,8 +294,7 @@ class Layer(object):
         return None
 
 '''
-A class for a dense layer (e.g. Layer 1 of the sigmoid neural network), a fully-connected layer
-in which the output neurons (features) are a combination of all the input neurons (features)
+A class for a "dense" layer (e.g. Layer 1 of the sigmoid neural network), which is a fully-connected layer, meaning that the output neurons (features) are a combination of all the input neurons (features)
 '''
 class Dense(Layer):
     '''
@@ -429,11 +428,16 @@ class NeuralNetwork(object):
     backward through the layers
     '''
     def train_batch(self, X_batch: np.ndarray, y_batch: np.ndarray) -> float:
-        # compute prediciton
+       
+        # compute prediction
         prediction = self.forward(X_batch)
+
+        #print("P =")
+        #print(prediction)
         
         # compute loss
         loss = self.loss.forward(prediction, y_batch)
+        #print(f"Loss = {loss}")
 
         # compute loss gradients
         self.backward(self.loss.backward())
@@ -453,7 +457,7 @@ class NeuralNetwork(object):
     def param_grads(self):
         for layer in self.layers:   
             yield from layer.param_grads
-
+ 
 
 '''
 A base optimizer class for updating the Neural Network parameters based on the loss gradients
@@ -484,8 +488,28 @@ class SGD(Optimizer):
     '''    
     def step(self):
 
+        '''
+        print("Optimizing parameters...")
+        print("#"*60)
+        print("All parameters: ")
+        print(list(self.net.params()))
+        print("#"*60)
+        print("All parameter gradients: ")
+        print(list(self.net.param_grads()))
+        print("#"*60)
+        '''
+
         # get the params and the corresponding loss gradients and perform updates
-        for (param, param_grad) in zip(self.net.params(), self.net.param_grads):
+        for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
+
+            '''
+            print(f"larning_rate = {self.lr}")
+            print("param = ")
+            print(param)
+            print("param_grad = ")
+            print(param_grad)
+            '''
+
             param -= self.lr * param_grad
 
 
@@ -525,7 +549,7 @@ class Trainer(object):
     then passed backward to compute loss gradients and then parameters are updated by the optimizer. An epoch ends when all batches have been trained.
     '''
     def fit(self, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, 
-            opochs: int = 100, eval_every: int = 10, batch_size: int = 32, seed: int = 1, restart: bool = True):
+            epochs: int = 100, eval_every: int = 10, batch_size: int = 32, seed: int = 1, restart: bool = True):
 
         np.random.seed(seed)
 
@@ -539,19 +563,22 @@ class Trainer(object):
         # iterate over the eopchs
         for e in range(epochs):
 
+            #print(f"Training epoch # {e+1}")
+  
             if(e%eval_every == 0):
-                # for early stopping incase losses start to increase 
+                # create a copy of the neural network state,
+                # will need it for early stopping incase losses start to increase 
                 last_model = copy.deepcopy(self.net)
 
             # permute data at the beginning of the epoch
-            X_train, y_train = permute_data(X_train, y_train)
+            #X_train, y_train = permute_data(X_train, y_train)
 
             # generate batches
             batch_generator = self.generate_batch(X_train, y_train, batch_size)
 
             # iterate over batches and train them
             for ii, (X_batch, y_batch) in enumerate(batch_generator):
-                
+                #print(f"Training batch # {ii+1}")
                 self.net.train_batch(X_batch, y_batch)
                 self.optim.step()
             
@@ -560,10 +587,13 @@ class Trainer(object):
                 test_loss = self.net.loss.forward(test_pred, y_test)
                 print(f"Validation loss after {e+1} epochs is {test_loss: .3f}")
 
+            ''' 
             if test_loss< self.best_loss:
                 self.best_loss = test_loss
             else:
                 print("Loss has increased since last epoch")
                 # reset the neural network state to what is was at the beginning of the epoch and start a new epoch 
+                self.net = last_model
                 setattr(self.optim, 'net', last_model)
                 break
+            '''
