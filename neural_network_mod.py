@@ -3,6 +3,7 @@
 '''
 
 import numpy as np
+from scipy.special import logsumexp
 from typing import Callable, Dict, Tuple, List
 import copy
 
@@ -10,6 +11,7 @@ import copy
 function that checks if two arrays have atching shape
 '''
 def assert_same_shape(array1: np.ndarray, array2: np.ndarray) -> None:
+    #assert array1.shape == array2.shape, "Array shapes do not match"
     assert array1.shape == array2.shape, "Array shapes do not match"
     return None
 
@@ -20,6 +22,18 @@ def permute_data(X, y):
 
     perm = np.random.permutation(X.shape[0])
     return X[perm], y[perm]
+
+
+'''
+Softmax function
+'''
+def softmax(P: np.ndarray, sf_axis: int):
+
+    # using logsumexp instead of directly computing exp(P) to avoid numerical overflow
+    S = logsumexp(P, axis = sf_axis)
+    S = np.reshape(S, (P.shape[0], 1))
+    softmax_P = np.exp(P-S) 
+    return softmax_P
 
 '''
 A generalised base class for neural network operations
@@ -79,8 +93,7 @@ class ParamOperation(Operation):
         self.param = param
 
     '''
-    backward pass for operations that take in parameters will also require 
-    computing gradients of the output w.r.t. the parameters 
+    backward pass for operations that take in parameters will also require computing gradients of the output w.r.t. the parameters 
     '''    
     def backward(self, output_grad: np.ndarray) -> np.ndarray:   
         # make sure output gradient arrays and output are the same shape 
@@ -125,14 +138,14 @@ class WeightMultiply(ParamOperation):
     '''    
     def _input_grad(self, output_grad: np.ndarray) -> np.ndarray:
         # comput gradient w.r.t. input (using chain rule)
-        return np.dot(output_grad, np.transpose(self.param,(1,0)))
+        return np.dot(output_grad, np.transpose(self.param, (1,0)))
 
     '''
     _param_grad method definition
     '''
     def _param_grad(self, output_grad: np.ndarray) -> np.ndarray:
         # compute gradient w.r.t. parameters (using chain rule)
-        return np.dot(np.transpose(self.input_,(1,0)), output_grad)
+        return np.dot(np.transpose(self.input_, (1,0)), output_grad)
 
 
 '''
@@ -170,6 +183,28 @@ class BiasAdd(ParamOperation):
         param_grad = np.ones_like(self.param) * output_grad
         return np.sum(param_grad, axis=0).reshape(1, param_grad.shape[1])
 
+'''
+Class for tanh activation function 
+'''
+class Tanh(Operation):
+
+    '''
+    constructor
+    '''
+    def __init__(self):
+        super().__init__()
+
+    '''
+    _output method definition
+    '''
+    def _output(self) -> np.ndarray:
+        # comput output
+        return np.tanh(self.input_)
+
+    def _input_grad(self, output_grad: np.ndarray) -> np.ndarray:
+        # compute gradient w.r.t. input (using chain rule)
+        return ((1.0 - np.power(self.output, 2)) * output_grad)
+
 
 '''
 Class for sigmoid activation function 
@@ -187,11 +222,11 @@ class Sigmoid(Operation):
     '''
     def _output(self) -> np.ndarray:
         # comput output
-        return 1.0/(1.0 + np.exp(-1.0*self.input_))
+        return 1.0/(1.0 + np.exp(-1.0 * self.input_))
 
     def _input_grad(self, output_grad: np.ndarray) -> np.ndarray:
         # compute gradient w.r.t. input (using chain rule)
-        return self.output * (1.0 - self.output) * output_grad
+        return (self.output * (1.0 - self.output) * output_grad)
 
 
 '''
@@ -248,7 +283,7 @@ class Layer(object):
 
         # forward passes through each operation
         for operation in self.operations:
-            input_ = operation.forward(input_) 
+            input_ = operation.forward(input_)
 
         # layer output
         self.output = input_
@@ -298,14 +333,14 @@ A class for a "dense" layer (e.g. Layer 1 of the sigmoid neural network), which 
 '''
 class Dense(Layer):
     '''
-    constructor (note that the default activation function is Linear)
+    constructor (note that the default activation function is Tanh)
     '''
-    def __init__(self, neurons : int, activation: Operation = Linear()) -> None:
+    def __init__(self, neurons : int, activation: Operation = Tanh()):
         super().__init__(neurons)
         self.activation = activation
 
     '''
-    initialize layer attributes
+    initialize fully-connected layer attributes
     '''
     def _setup_layer(self, input_: np.ndarray) -> None:
         if (self.seed):
@@ -377,13 +412,49 @@ class MeanSquaredError(Loss):
     compute mean squared loss
     '''
     def _output(self) -> float:    
-        return np.mean(np.power(self.prediction - self.target, 2))
+        return np.sum(np.power(self.prediction - self.target, 2))/self.prediction.shape[0]
 
     '''
     computes the loss gradient w.r.t. loss input
     '''
     def _input_grad(self) -> np.ndarray:    
         return 2.0 * (self.prediction - self.target) / self.prediction.shape[0]
+
+
+'''
+A subclass for mean-soft-max cross entropy Loss function
+'''
+class SoftmaxCrossEntropyLoss(Loss):
+    '''
+    constructor
+    '''
+    def __init__(self, eps: float = 1e-9):
+        super().__init__()
+        self.eps = eps
+        self.single_output = False
+
+    '''
+    compute mean squared loss
+    '''
+    def _output(self) -> float:    
+        
+        # apply softmax function to each row
+        softmax_preds = softmax(self.prediction, sf_axis=1)
+        
+        # clip softmax output range to (0 + eps, 1 - eps) to prevent numerical overflow
+        self.softmax_preds = np.clip(softmax_preds, self.eps, 1 - self.eps)
+
+        # compute the softmax cross entropy loss
+        SCE_loss = -self.target * np.log(self.softmax_preds) - (1 -self.target) * np.log(1 - self.softmax_preds) 
+        return np.sum(SCE_loss)
+        
+    '''
+    computes the loss gradient w.r.t. loss input
+    '''
+    def _input_grad(self) -> np.ndarray:    
+        return (self.softmax_preds- self.target)
+
+
 
 '''
 The Neural Network Class
@@ -407,7 +478,6 @@ class NeuralNetwork(object):
     '''      
     def forward(self, X_batch: np.ndarray) -> np.ndarray:
         X_out = X_batch
-
         for layer in self.layers:
             X_out = layer.forward(X_out)      
 
@@ -464,9 +534,9 @@ A base optimizer class for updating the Neural Network parameters based on the l
 '''
 class Optimizer(object):
     '''
-    constructor (initialize with the learning rate)
+    constructor (initialize with the learning rate, default = 0.01)
     '''
-    def __init__(self, lr : float):
+    def __init__(self, lr : float = 0.01):
         self.lr = lr
 
     def step(self):
@@ -488,27 +558,8 @@ class SGD(Optimizer):
     '''    
     def step(self):
 
-        '''
-        print("Optimizing parameters...")
-        print("#"*60)
-        print("All parameters: ")
-        print(list(self.net.params()))
-        print("#"*60)
-        print("All parameter gradients: ")
-        print(list(self.net.param_grads()))
-        print("#"*60)
-        '''
-
         # get the params and the corresponding loss gradients and perform updates
         for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
-
-            '''
-            print(f"larning_rate = {self.lr}")
-            print("param = ")
-            print(param)
-            print("param_grad = ")
-            print(param_grad)
-            '''
 
             param -= self.lr * param_grad
 
@@ -538,7 +589,7 @@ class Trainer(object):
 
         N = X.shape[0]
 
-        for ii in range(0,N,size):
+        for ii in range(0, N, size):
             X_batch = X[ii:ii+size]    
             y_batch = y[ii:ii+size]    
             yield X_batch, y_batch
@@ -557,23 +608,22 @@ class Trainer(object):
             for layer in self.net.layers:
                 layer.first = True
 
-            self.best_loss = 1e9
-    
+            self.best_loss = 1.0e19
 
         # iterate over the eopchs
         for e in range(epochs):
 
             #print(f"Training epoch # {e+1}")
   
-            if(e%eval_every == 0):
+            if((e+1)%eval_every == 0):
                 # create a copy of the neural network state,
                 # will need it for early stopping incase losses start to increase 
                 last_model = copy.deepcopy(self.net)
 
-            # permute data at the beginning of the epoch
-            #X_train, y_train = permute_data(X_train, y_train)
+            # permute training data at the beginning of the epoch
+            X_train, y_train = permute_data(X_train, y_train)
 
-            # generate batches
+            # generate batches of the training data
             batch_generator = self.generate_batch(X_train, y_train, batch_size)
 
             # iterate over batches and train them
@@ -582,18 +632,38 @@ class Trainer(object):
                 self.net.train_batch(X_batch, y_batch)
                 self.optim.step()
             
-            if(e%eval_every == 0):
+            # evaluate loss function and errors on the testing data 
+            if((e+1)%eval_every == 0):
                 test_pred = self.net.forward(X_test)
                 test_loss = self.net.loss.forward(test_pred, y_test)
-                print(f"Validation loss after {e+1} epochs is {test_loss: .3f}")
 
-            ''' 
-            if test_loss< self.best_loss:
-                self.best_loss = test_loss
-            else:
-                print("Loss has increased since last epoch")
-                # reset the neural network state to what is was at the beginning of the epoch and start a new epoch 
-                self.net = last_model
-                setattr(self.optim, 'net', last_model)
-                break
-            '''
+             
+                if test_loss< self.best_loss:
+                    print(f"Validation loss after {e+1} epochs is {test_loss: .3f}")
+                    self.best_loss = test_loss
+                    
+                else:
+                    print(f"""Loss increased after epoch {e+1}, final loss was {self.best_loss:.3f}, using the model from epoch {e+1-eval_every}""")                    
+                    
+                    # reset the neural network state to what is was at the beginning of the epoch and stop doing iterations
+                    self.net = last_model
+                    setattr(self.optim, 'net', last_model)
+                    break
+                
+
+'''
+function for evauating error in the prediction
+'''
+def regression_model_errors(model: NeuralNetwork, X: np.ndarray, y: np.ndarray):
+
+    # compute prediction
+    P = model.forward(X)
+    
+    # compute mean absolute error
+    mabs_err = np.mean(np.abs(y-P)) 
+
+    # compute root mean squared error
+    rms_err = np.sqrt(np.mean(np.power(y-P, 2)))    
+
+    print(f"Mean absolute error = {mabs_err :e}")
+    print(f"Root mean squared error = {rms_err :e}")
