@@ -11,7 +11,6 @@ import copy
 function that checks if two arrays have atching shape
 '''
 def assert_same_shape(array1: np.ndarray, array2: np.ndarray) -> None:
-    #assert array1.shape == array2.shape, "Array shapes do not match"
     assert array1.shape == array2.shape, "Array shapes do not match"
     return None
 

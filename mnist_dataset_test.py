@@ -78,8 +78,17 @@ trainer = Trainer(model, optimizer)
 trainer.fit(X_train, y_train_tr, X_test, y_test_tr, epochs = 50, eval_every = 10, batch_size = 60, seed = 20190119)
 P =  model.forward(X_test)
 
-for i in range(10):
-    print(f"target: {y_test[i]}, predictions: {P[i]}")
-    print("")
+# compute model accuracy
+wrong = 0
+for i in range(y_test.shape[0]):
+    
+    #print(f"target: {y_test[i]}, predictions: {P[i]} -> {np.argmax(P[i])}")
+    #print("")
 
+    # compare predicted class to target class
+    if np.argmax(P[i]) != y_test[i]:
+        wrong += 1
+
+model_accuracy = 100.0 * (y_test.shape[0] - wrong)/y_test.shape[0]
+print(f"The model accuracy is {model_accuracy: .2f}%")
 
