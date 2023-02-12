@@ -1,4 +1,4 @@
-# Implementation and testing of some simple neural network algorithms and deep learning models (from
+# Implementation and testing of some simple neural network algorithms and deep learning models (adapted from
 the 'Deep Learning From Scratch' textbook by Seth Weidman):
 
 The 'neural_network_mod' scipt is a self-contained python module containing classes that can be
