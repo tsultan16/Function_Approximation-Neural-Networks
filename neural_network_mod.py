@@ -202,7 +202,7 @@ class Tanh(Operation):
 
     def _input_grad(self, output_grad: np.ndarray) -> np.ndarray:
         # compute gradient w.r.t. input (using chain rule)
-        return ((1.0 - np.power(self.output, 2)) * output_grad)
+        return (output_grad * (1.0 - self.output * self.output))
 
 
 '''
@@ -444,14 +444,14 @@ class SoftmaxCrossEntropyLoss(Loss):
         self.softmax_preds = np.clip(softmax_preds, self.eps, 1 - self.eps)
 
         # compute the softmax cross entropy loss
-        SCE_loss = -self.target * np.log(self.softmax_preds) - (1 -self.target) * np.log(1 - self.softmax_preds) 
-        return np.sum(SCE_loss)
+        SCE_loss = -1.0 * self.target * np.log(self.softmax_preds) - (1.0 - self.target) * np.log(1 - self.softmax_preds) 
+        return np.sum(SCE_loss) / self.prediction.shape[0]
         
     '''
     computes the loss gradient w.r.t. loss input
     '''
     def _input_grad(self) -> np.ndarray:    
-        return (self.softmax_preds- self.target)
+        return (self.softmax_preds - self.target) / self.prediction.shape[0]
 
 
 
@@ -537,6 +537,7 @@ class Optimizer(object):
     '''
     def __init__(self, lr : float = 0.01):
         self.lr = lr
+        self.first = True
 
     def step(self):
         # step method needs to be implemented for each optimizer sub class
@@ -557,10 +558,55 @@ class SGD(Optimizer):
     '''    
     def step(self):
 
+        if (self.first):
+            self.first = False
+        
         # get the params and the corresponding loss gradients and perform updates
         for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
+            self._update_rule(param = param, grad = param_grad)
 
-            param -= self.lr * param_grad
+    '''
+    update rule for SGD with momentum 
+    '''        
+    def _update_rule(self, **kwargs):
+
+        update = self.lr * kwargs['grad']
+        kwargs['param'] -= update
+
+
+'''
+A Stochastic Gradient Descent Optimizer sub-class with momentum
+'''
+class SGDMomentum(Optimizer):
+    '''
+    constructor
+    '''
+    def __init__(self, lr: float = 0.01, momentum: float = 0.9):
+        super().__init__(lr)
+        self.momentum = momentum
+
+    '''
+    step method for updating parameters using stochastic gradient decent
+    '''    
+    def step(self):
+
+        # if this is the first iteration, initialize the "velocities" for each param
+        if (self.first):
+            self.velocities = [np.ones_like(param) for param in self.net.params()] 
+            self.first = False
+
+        # get the params and the corresponding loss gradients and perform updates
+        for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.velocities):
+            self._update_rule(param = param, grad = param_grad, velocity = velocity)
+
+    '''
+    update rule for SGD with momentum 
+    '''        
+    def _update_rule(self, **kwargs):
+
+        kwargs['velocity'] *= self.momentum
+        kwargs['velocity'] += self.lr * kwargs['grad']
+        kwargs['param'] -= kwargs['velocity']
 
 
 '''
