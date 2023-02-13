@@ -592,7 +592,7 @@ class SGDMomentum(Optimizer):
 
         # if this is the first iteration, initialize the "velocities" for each param
         if (self.first):
-            self.velocities = [np.ones_like(param) for param in self.net.params()] 
+            self.velocities = [np.zeros_like(param) for param in self.net.params()] 
             self.first = False
 
         # get the params and the corresponding loss gradients and perform updates
@@ -604,8 +604,7 @@ class SGDMomentum(Optimizer):
     '''        
     def _update_rule(self, **kwargs):
 
-        kwargs['velocity'] *= self.momentum
-        kwargs['velocity'] += self.lr * kwargs['grad']
+        kwargs['velocity'] = self.lr * kwargs['grad'] + self.momentum * kwargs['velocity'] 
         kwargs['param'] -= kwargs['velocity']
 
 
