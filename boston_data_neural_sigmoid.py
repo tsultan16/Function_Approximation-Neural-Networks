@@ -26,12 +26,12 @@ print("X_test shape = ",X_test.shape, ", y_test shape = ",y_test.shape)
 # train the dataset and generate prediction #
 #############################################
 
-
+'''
 ################################################
 K = 1000 # number of observations
 N = 50  # number of features
 M = 5 # number of hidden layers
-niterations = 2000 # number of gradient descent interations
+niterations = 50 # number of gradient descent interations
 
 # generate some test sample data
 X = np.random.randn(K,N)
@@ -44,9 +44,8 @@ y = predict(X, test_weights)
 #for i in range(y.shape[0]):
 #    y[i,0] *= 1 + (np.random.uniform(0,1,1)[0] - 0.5) * 0.1  
 
-
 # train the approximation
-train_info = train(X, y, n_iter = niterations, hidden_layers = M, learning_rate = 0.001,batch_size = 50, seed = 182635)
+train_info = train(X, y, n_iter = niterations, learning_rate = 0.001, momentum = 0.0, n_hidden_weights = M, batch_size = 50, seed = 182635)
 
 losses = train_info[0]
 weights = train_info[1]
@@ -61,17 +60,16 @@ max_P = np.amax(P)
 min_P = np.amin(P)
 z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
 
-
-
-############3##################################3
+'''
+##############################################3
 
 K = y_test.shape[0]  # number of test observations
 N = X_test.shape[1]  # number of features
 M = 13 # number of hidden layer weights
-niterations = 500    # number of gradient descent interations
+niterations = 50    # number of gradient descent interations
 
 # train the dataset and generate weights
-train_info = train(X_train, y_train, n_iter = niterations, n_hidden_weights = M, learning_rate = 0.001, batch_size = 50, seed = 182635)
+train_info = train(X_train, y_train, n_iter = niterations, n_hidden_weights = M, momentum = 0.9, learning_rate = 0.001, batch_size = 50, seed = 182635)
 
 losses   = train_info[0]
 weights  = train_info[1]
@@ -87,7 +85,6 @@ max_P = np.amax(P_test)
 min_P = np.amin(P_test)
 
 z = np.linspace(math.floor(min(min_y, min_P)), math.ceil(max(max_y, max_P)), 20*N)
-
 
 # Dependance of target 'y' on it's most important feature, i.e. feature corresponding to the weight with the highest magnitude
 

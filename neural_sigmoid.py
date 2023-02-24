@@ -105,6 +105,19 @@ def init_weights(N: int, M: int) -> Dict[str, np.ndarray]:
 
     return weights
 
+def init_velocities(N: int, M: int) -> Dict[str, np.ndarray]: 
+
+    # initialize the weights
+    velocities: Dict[str, np.ndarray] = {}
+
+    velocities['W1'] = np.zeros(shape=(N, M))
+    velocities['B1'] = np.zeros(shape=(1, M))
+    velocities['W2'] = np.zeros(shape=(M, 1))
+    velocities['B2'] = np.zeros(shape=(1, 1))
+
+    return velocities
+
+
 Batch = Tuple[np.ndarray, np.ndarray]
 def generate_batch(X: np.ndarray, y: np.ndarray, batch_lo: int = 0, batch_size: int = 10) -> Batch:
 
@@ -120,7 +133,7 @@ def generate_batch(X: np.ndarray, y: np.ndarray, batch_lo: int = 0, batch_size: 
     return X_batch, y_batch
 
 def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float = 0.01, 
-          n_hidden_weights: int = 5, batch_size: int = 10,
+          momentum: float = 0.9, n_hidden_weights: int = 5, batch_size: int = 10,
           seed: int = 1):
 
     print("Commencing training...")
@@ -130,6 +143,9 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
 
     # initialize weights
     weights = init_weights(X.shape[1], n_hidden_weights) 
+
+    # initialize velocities
+    velocities = init_velocities(X.shape[1], n_hidden_weights)
     
     losses = []
     mabs_err = []
@@ -162,13 +178,21 @@ def train(X: np.ndarray, y: np.ndarray, n_iter: int = 1000, learning_rate: float
             total_loss += loss
             loss_grads = compute_loss_gradient(forward_info, weights)
 
-            # update the weights (gradient descent)
-            weights['W1'] -= learning_rate * loss_grads['W1']     
-            weights['B1'] -= learning_rate * loss_grads['B1']     
-            weights['W2'] -= learning_rate * loss_grads['W2']     
-            weights['B2'] -= learning_rate * loss_grads['B2']     
+            '''
+            # update the weights (gradient descent without momentum)
+            for key in weights.keys():
+                update = learning_rate * loss_grads[key]
+                weights[key] -= update   
+            '''
 
+            # update the weights and velocities (gradient descent with momentum)
+            for key in weights.keys():
+                update = learning_rate * loss_grads[key] + momentum * velocities[key]
+                weights[key] -= update
+                velocities[key] = update
+ 
         losses.append(total_loss)
+        print(f"Loss after iteration#{i+1} is {total_loss}")
 
         # compute the prediciton and associated errors
         P = predict(X, weights)
