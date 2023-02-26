@@ -54,7 +54,7 @@ plt.show()
 
     We will use a model with two layers, we will use a tanh activation function at the end of the first layer and sigmoid at the end of the second layer since the outputs represent probabilities for each class and should have values in the range (0,1).
 
-    We will set the number of neurons in the hidden layers to the geometric mean of the number of inputs and the number of outputs per image, i.e. sqrt(784 * 10) ~ 89  
+    We will set the number of neurons in the hidden layers to the geometric mean of the number of inputs and the number of outputs per image, i.e. sqrt(784 * 10) ~ 89. The last layer needs to have 10 neurons since each observation will get 10 output probabilities.  
 
  '''
 
@@ -69,13 +69,22 @@ for i in range(y_train.shape[0]):
 for i in range(y_test.shape[0]):
     y_test_tr[i, y_test[i,0]] = 1
 
+'''
+    model with Mean Squared Loss
+'''
 
 model = NeuralNetwork(layers = [Dense(neurons = 89, activation = Tanh()), Dense(neurons = 10, activation = Sigmoid())], loss = MeanSquaredError(), seed = 20190119) 
 
-optimizer = SGD(lr = 0.1)
+#model = NeuralNetwork(layers = [Dense(neurons = 89, activation = Tanh()), Dense(neurons = 10, activation = Linear())], loss = SoftmaxCrossEntropyLoss(), seed = 20190119) 
+
+
+#optimizer = SGD(lr = 0.1)
+optimizer = SGDMomentum(lr = 0.1, momentum = 0.9)
 trainer = Trainer(model, optimizer)
 
-trainer.fit(X_train, y_train_tr, X_test, y_test_tr, epochs = 50, eval_every = 10, batch_size = 60, seed = 20190119)
+print("Optimizer class: ",optimizer.__class__)
+
+trainer.fit(X_train, y_train_tr, X_test, y_test_tr, epochs = 1, eval_every = 1, batch_size = 60, seed = 20190119)
 P =  model.forward(X_test)
 
 # compute model accuracy
@@ -92,3 +101,9 @@ for i in range(y_test.shape[0]):
 model_accuracy = 100.0 * (y_test.shape[0] - wrong)/y_test.shape[0]
 print(f"The model accuracy is {model_accuracy: .2f}%")
 
+
+####################################################################################
+'''
+Model with Softmax cross-entropy loss (don't need a sigmoid activation at the end of second layer, since softmax function causes outputs to be in the required range of (0,1)). This model learns much faster than the model with
+Mean Squared loss and yields greater accuracy  
+'''

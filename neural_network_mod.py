@@ -539,9 +539,19 @@ class Optimizer(object):
         self.lr = lr
         self.first = True
 
+        self.param_00 = -1.0e-20
+        self.velocity_00 = 0.0
+
     def step(self):
-        # step method needs to be implemented for each optimizer sub class
+        for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
+            self._update_rule(param = param, grad = param_grad)
+
+    '''
+    update rule needs to be implemented for each optimizer sub class 
+    '''        
+    def _update_rule(self, **kwargs):
         raise NotImplementedError()
+
 
 '''
 A Stochastic Gradient Descent Optimizer sub-class
@@ -565,6 +575,12 @@ class SGD(Optimizer):
         for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
             self._update_rule(param = param, grad = param_grad)
 
+            #self.max_param = max(self.max_param, np.amax(param))
+            #self.min_param = min(self.min_param, np.amin(param))
+            
+            #self.max_param = np.amax(param)
+            #self.min_param = np.amin(param)
+            
     '''
     update rule for SGD with momentum 
     '''        
@@ -573,6 +589,8 @@ class SGD(Optimizer):
         update = self.lr * kwargs['grad']
         kwargs['param'] -= update
 
+        self.param_00 = kwargs['param'][0,0]
+            
 
 '''
 A Stochastic Gradient Descent Optimizer sub-class with momentum
@@ -584,30 +602,104 @@ class SGDMomentum(Optimizer):
     def __init__(self, lr: float = 0.01, momentum: float = 0.9):
         super().__init__(lr)
         self.momentum = momentum
+        #self.max_grad = 0.0
+        self.nsteps = 0
+        self.nparams = 0
+        self.param_00_before = 0.0
+        self.velocity_00_before = 0.0
+        self.grad_00_before = 0.0
+        self.param_00_after = 0.0
+        self.velocity_00_after = 0.0
+        self.grad_00_after = 0.0
+
+        # manually initializing veloities array
+        self.velocities = [np.zeros(shape=(784,89)), np.zeros(shape=(1,89)), np.zeros(shape=(89,10)), np.zeros(shape=(1,10))]
+
 
     '''
     step method for updating parameters using stochastic gradient decent
     '''    
     def step(self):
 
+        self.nsteps += 1
+
         # if this is the first iteration, initialize the "velocities" for each param
         if (self.first):
-            self.velocities = [np.zeros_like(param) for param in self.net.params()] 
+            print("Initializing the velocities..")
+            
+            #self.velocities = [np.zeros_like(param) for param in self.net.params()] # something wrong here?!
+            
             self.first = False
 
+        #print(f"Max gradient = {self.max_grad :e}")
+        #print(f"Max velocity = {self.max_velocity :e}")
+
         # get the params and the corresponding loss gradients and perform updates
+        self.nparams = 0
+        nparam = 0
+
+        '''        
+        if (self.nsteps == 1000):
+            print(f"Length of velocity list: {len(self.velocities)}")
+            for i in range(4):
+                print(f"Velpcity array shape for param {i+1}: {self.velocities[i].shape} ")
+        '''
+
         for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.velocities):
-            self._update_rule(param = param, grad = param_grad, velocity = velocity)
+            
+            self.nparams += 1
+            nparam += 1
+            
+            '''
+            if (self.nsteps == 1000):
+                print(f"nparam = {nparam}")
+                print("velocity_array_shape = ", velocity.shape)
+            '''
+
+            if (self.nparams == 4):
+                print("########## BEFORE #########")
+                print("param = ",param[0,0])
+                print("velocity = ", velocity[0,0])
+                print("Mean velocity = ", np.mean(velocity))
+                print("###########################")
+        
+
+            #self._update_rule(param = param, grad = param_grad, vel = velocity)
+
+            update = self.lr * param_grad + self.momentum * velocity 
+            param -= update
+            velocity = update
+            
+            if (self.nparams == 4):
+                print("########## AFTER #########")
+                print("param = ", param[0,0])
+                print("delta = ", self.lr * param_grad[0,0] )
+                print("velocity = ", velocity[0,0])
+                print("Mean velocity = ", np.mean(velocity))
+      
+                print("###########################")
+
+        print("nparams = ",self.nparams)
 
     '''
     update rule for SGD with momentum 
     '''        
     def _update_rule(self, **kwargs):
 
-        kwargs['velocity'] = self.lr * kwargs['grad'] + self.momentum * kwargs['velocity'] 
-        kwargs['param'] -= kwargs['velocity']
+        #if ((self.nupdates == 999) and (self.nparams == 4)):
+        
+        update = self.lr * kwargs['grad'] + self.momentum * kwargs['vel'] 
+        kwargs['param'] -= update
+        kwargs['vel'] = update
 
 
+        self.param_00 = kwargs['param'][0,0]
+        self.velocity_00 = kwargs['vel'][0,0]
+        #self.max_grad = np.amax(self.lr * kwargs['grad'])
+        #self.max_velocity = np.amax(self.momentum * kwargs['velocity'])
+
+        #if ((self.nupdates == 1000) and (self.nparams == 4)):
+        
 '''
 A class for training a given neural network using a given optimizer
 '''
@@ -665,7 +757,7 @@ class Trainer(object):
                 last_model = copy.deepcopy(self.net)
 
             # permute training data at the beginning of the epoch
-            X_train, y_train = permute_data(X_train, y_train)
+            #X_train, y_train = permute_data(X_train, y_train)
 
             # generate batches of the training data
             batch_generator = self.generate_batch(X_train, y_train, batch_size)
@@ -675,19 +767,22 @@ class Trainer(object):
                 #print(f"Training batch # {ii+1}")
                 self.net.train_batch(X_batch, y_batch)
                 self.optim.step()
-            
+        
             # evaluate loss function and errors on the testing data 
             if((e+1)%eval_every == 0):
                 test_pred = self.net.forward(X_test)
                 test_loss = self.net.loss.forward(test_pred, y_test)
 
+                #print(f"Max param: {self.optim.max_param : e}")
+                #print(f"Min param: {self.optim.min_param : e}")
+                #print(f"Min velocity: {self.optim.max_velocity : e}")
              
                 if test_loss< self.best_loss:
-                    print(f"Validation loss after {e+1} epochs is {test_loss: .3f}")
+                    print(f"Validation loss after {e+1} epochs is {test_loss : e}")
                     self.best_loss = test_loss
                     
                 else:
-                    print(f"""Loss increased after epoch {e+1}, final loss was {self.best_loss:.3f}, using the model from epoch {e+1-eval_every}""")                    
+                    print(f"""Loss increased after epoch {e+1}, final loss was {self.best_loss : .3f}, using the model from epoch {e+1-eval_every}""")                    
                     
                     # reset the neural network state to what is was at the beginning of the epoch and stop doing iterations
                     self.net = last_model
