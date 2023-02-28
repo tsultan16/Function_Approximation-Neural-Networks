@@ -84,7 +84,7 @@ trainer = Trainer(model, optimizer)
 
 print("Optimizer class: ",optimizer.__class__)
 
-trainer.fit(X_train, y_train_tr, X_test, y_test_tr, epochs = 1, eval_every = 1, batch_size = 60, seed = 20190119)
+trainer.fit(X_train, y_train_tr, X_test, y_test_tr, epochs = 50, eval_every = 1, batch_size = 60, seed = 20190119)
 P =  model.forward(X_test)
 
 # compute model accuracy

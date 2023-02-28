@@ -262,6 +262,7 @@ class Layer(object):
         self.first = True
         self.params: List[np.ndarray] = []  # parameters for all the operation
         self.param_grads: List[np.ndarray] = []  # gradients w.r.t. parameters
+        self.velocities: List[np.ndarray] = []  # velocities (i.e. parameter values from previous gradient descent iteration)
         self.operations: List[Operation] = []  # all operations within this layer
 
     def _setup_layer(self, num_in: int) -> None:
@@ -318,6 +319,7 @@ class Layer(object):
     '''
     method for extracting the parameters from each operation
     '''
+    '''
     def _params(self) -> None:
 
         self.params = []
@@ -326,7 +328,8 @@ class Layer(object):
                 self.params.append(operation.param)
 
         return None
-
+    '''
+        
 '''
 A class for a "dense" layer (e.g. Layer 1 of the sigmoid neural network), which is a fully-connected layer, meaning that the output neurons (features) are a combination of all the input neurons (features)
 '''
@@ -345,13 +348,16 @@ class Dense(Layer):
         if (self.seed):
             np.random.seed(self.seed)
 
-        self.params = []
+        #self.params = []
+        #self.velocities = []
         
         # initialize the weights
         self.params.append(np.random.randn(input_.shape[1], self.neurons))
+        self.velocities.append(np.zeros(shape = (input_.shape[1], self.neurons)))
         
         # initialize the bias
         self.params.append(np.random.randn(1, self.neurons))
+        self.velocities.append(np.zeros(shape = (1, self.neurons)))
         
         # initialize the operations
         self.operations = [WeightMultiply(self.params[0]),BiasAdd(self.params[1]), self.activation]
@@ -500,13 +506,9 @@ class NeuralNetwork(object):
        
         # compute prediction
         prediction = self.forward(X_batch)
-
-        #print("P =")
-        #print(prediction)
-        
+  
         # compute loss
         loss = self.loss.forward(prediction, y_batch)
-        #print(f"Loss = {loss}")
 
         # compute loss gradients
         self.backward(self.loss.backward())
@@ -524,9 +526,16 @@ class NeuralNetwork(object):
     extract loss gradients w.r.t. the parameters from the network
     '''
     def param_grads(self):
-        for layer in self.layers:   
+        for layer in self.layers:
             yield from layer.param_grads
  
+    '''
+    extract velocities from the network
+    '''
+    def vels(self):
+        for layer in self.layers:
+            yield from layer.velocities
+
 
 '''
 A base optimizer class for updating the Neural Network parameters based on the loss gradients
@@ -539,12 +548,10 @@ class Optimizer(object):
         self.lr = lr
         self.first = True
 
-        self.param_00 = -1.0e-20
-        self.velocity_00 = 0.0
-
     def step(self):
-        for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
-            self._update_rule(param = param, grad = param_grad)
+        #for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.net.vels()):
+        #    self._update_rule(param = param, grad = param_grad, vel = velocity)
+        raise NotImplementedError()
 
     '''
     update rule needs to be implemented for each optimizer sub class 
@@ -572,14 +579,8 @@ class SGD(Optimizer):
             self.first = False
         
         # get the params and the corresponding loss gradients and perform updates
-        for (param, param_grad) in zip(self.net.params(), self.net.param_grads()):
-            self._update_rule(param = param, grad = param_grad)
-
-            #self.max_param = max(self.max_param, np.amax(param))
-            #self.min_param = min(self.min_param, np.amin(param))
-            
-            #self.max_param = np.amax(param)
-            #self.min_param = np.amin(param)
+        for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.net.vels()):
+            self._update_rule(param = param, grad = param_grad, vel = velocity)
             
     '''
     update rule for SGD with momentum 
@@ -588,8 +589,6 @@ class SGD(Optimizer):
 
         update = self.lr * kwargs['grad']
         kwargs['param'] -= update
-
-        self.param_00 = kwargs['param'][0,0]
             
 
 '''
@@ -602,104 +601,32 @@ class SGDMomentum(Optimizer):
     def __init__(self, lr: float = 0.01, momentum: float = 0.9):
         super().__init__(lr)
         self.momentum = momentum
-        #self.max_grad = 0.0
-        self.nsteps = 0
-        self.nparams = 0
-        self.param_00_before = 0.0
-        self.velocity_00_before = 0.0
-        self.grad_00_before = 0.0
-        self.param_00_after = 0.0
-        self.velocity_00_after = 0.0
-        self.grad_00_after = 0.0
-
-        # manually initializing veloities array
-        self.velocities = [np.zeros(shape=(784,89)), np.zeros(shape=(1,89)), np.zeros(shape=(89,10)), np.zeros(shape=(1,10))]
-
 
     '''
     step method for updating parameters using stochastic gradient decent
     '''    
     def step(self):
 
-        self.nsteps += 1
-
-        # if this is the first iteration, initialize the "velocities" for each param
+        # if this is the first iteration
         if (self.first):
-            print("Initializing the velocities..")
-            
-            #self.velocities = [np.zeros_like(param) for param in self.net.params()] # something wrong here?!
-            
             self.first = False
 
-        #print(f"Max gradient = {self.max_grad :e}")
-        #print(f"Max velocity = {self.max_velocity :e}")
-
         # get the params and the corresponding loss gradients and perform updates
-        self.nparams = 0
-        nparam = 0
+        for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.net.vels()):
 
-        '''        
-        if (self.nsteps == 1000):
-            print(f"Length of velocity list: {len(self.velocities)}")
-            for i in range(4):
-                print(f"Velpcity array shape for param {i+1}: {self.velocities[i].shape} ")
-        '''
-
-        for (param, param_grad, velocity) in zip(self.net.params(), self.net.param_grads(), self.velocities):
-            
-            self.nparams += 1
-            nparam += 1
-            
-            '''
-            if (self.nsteps == 1000):
-                print(f"nparam = {nparam}")
-                print("velocity_array_shape = ", velocity.shape)
-            '''
-
-            if (self.nparams == 4):
-                print("########## BEFORE #########")
-                print("param = ",param[0,0])
-                print("velocity = ", velocity[0,0])
-                print("Mean velocity = ", np.mean(velocity))
-                print("###########################")
-        
-
-            #self._update_rule(param = param, grad = param_grad, vel = velocity)
-
-            update = self.lr * param_grad + self.momentum * velocity 
-            param -= update
-            velocity = update
-            
-            if (self.nparams == 4):
-                print("########## AFTER #########")
-                print("param = ", param[0,0])
-                print("delta = ", self.lr * param_grad[0,0] )
-                print("velocity = ", velocity[0,0])
-                print("Mean velocity = ", np.mean(velocity))
-      
-                print("###########################")
-
-        print("nparams = ",self.nparams)
+            self._update_rule(param = param, grad = param_grad, vel = velocity)
 
     '''
     update rule for SGD with momentum 
     '''        
     def _update_rule(self, **kwargs):
 
-        #if ((self.nupdates == 999) and (self.nparams == 4)):
-        
         update = self.lr * kwargs['grad'] + self.momentum * kwargs['vel'] 
         kwargs['param'] -= update
-        kwargs['vel'] = update
+        kwargs['vel'] *= self.momentum 
+        kwargs['vel'] += self.lr * kwargs['grad']
 
 
-        self.param_00 = kwargs['param'][0,0]
-        self.velocity_00 = kwargs['vel'][0,0]
-        #self.max_grad = np.amax(self.lr * kwargs['grad'])
-        #self.max_velocity = np.amax(self.momentum * kwargs['velocity'])
-
-        #if ((self.nupdates == 1000) and (self.nparams == 4)):
-        
 '''
 A class for training a given neural network using a given optimizer
 '''
@@ -735,14 +662,13 @@ class Trainer(object):
     each epoch, the data is split into batches, each batch is trained, i.e. passed forward through the layers to compute a prediction, 
     then passed backward to compute loss gradients and then parameters are updated by the optimizer. An epoch ends when all batches have been trained.
     '''
-    def fit(self, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, 
-            epochs: int = 100, eval_every: int = 10, batch_size: int = 32, seed: int = 1, restart: bool = True):
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, epochs: int = 100, eval_every: int = 10, batch_size: int = 32, seed: int = 1, restart: bool = True):
 
         np.random.seed(seed)
 
         if restart:
-            for layer in self.net.layers:
-                layer.first = True
+            #for layer in self.net.layers:
+            #    layer.first = True
 
             self.best_loss = 1.0e19
 
@@ -773,10 +699,6 @@ class Trainer(object):
                 test_pred = self.net.forward(X_test)
                 test_loss = self.net.loss.forward(test_pred, y_test)
 
-                #print(f"Max param: {self.optim.max_param : e}")
-                #print(f"Min param: {self.optim.min_param : e}")
-                #print(f"Min velocity: {self.optim.max_velocity : e}")
-             
                 if test_loss< self.best_loss:
                     print(f"Validation loss after {e+1} epochs is {test_loss : e}")
                     self.best_loss = test_loss

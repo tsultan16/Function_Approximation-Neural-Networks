@@ -4,6 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import math
 import matplotlib.pyplot as plt
+import sys
 
 # Test datasets:
 
@@ -56,25 +57,42 @@ print("X_test shape = ",X_test.shape, ", y_test shape = ",y_test.shape)
 
 
 # create instances of linear regression and one-layer sigmoid neural networks
-linear_regression      = NeuralNetwork(layers = [Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456)
+#linear_regression      = NeuralNetwork(layers = [Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456)
+
 sigmoid_neural_network = NeuralNetwork(layers = [Dense(neurons = 13, activation = Sigmoid()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
-sigmoid_neural_network_tanh = NeuralNetwork(layers = [Dense(neurons = 13, activation = Tanh()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
-deep_learning_network = NeuralNetwork(layers = [Dense(neurons = 13, activation = Sigmoid()), Dense(neurons = 13, activation = Sigmoid()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
-deep_learning_network_tanh = NeuralNetwork(layers = [Dense(neurons = 13, activation = Tanh()), Dense(neurons = 13, activation = Tanh()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
+
+
+#sigmoid_neural_network_tanh = NeuralNetwork(layers = [Dense(neurons = 13, activation = Tanh()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
+
+#deep_learning_network = NeuralNetwork(layers = [Dense(neurons = 13, activation = Sigmoid()), Dense(neurons = 13, activation = Sigmoid()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
+
+#deep_learning_network_tanh = NeuralNetwork(layers = [Dense(neurons = 13, activation = Tanh()), Dense(neurons = 13, activation = Tanh()), Dense(neurons = 1, activation = Linear())], loss = MeanSquaredError(), seed = 123456) 
 
 # create optimizer and trainer instances and train the dataset
 #optimizer = SGD(lr = 0.01)
 
-trainer = Trainer(linear_regression, SGD(lr = 0.01))
-trainer.fit(X_train, y_train, X_test, y_test, epochs = 50, eval_every = 10, seed = 20190501)
-regression_model_errors(linear_regression, X_test, y_test)
-P_linear =  linear_regression.forward(X_test) 
-print("#"*80)
-trainer = Trainer(sigmoid_neural_network, SGD(lr = 0.01))
-trainer.fit(X_train, y_train, X_test, y_test, epochs = 50, eval_every = 10, seed = 20190501)
+#trainer = Trainer(linear_regression, SGD(lr = 0.01))
+#trainer.fit(X_train, y_train, X_test, y_test, epochs = 50, eval_every = 10, seed = 20190501)
+#regression_model_errors(linear_regression, X_test, y_test)
+#P_linear =  linear_regression.forward(X_test) 
+
+optimizer = SGD(lr = 0.01)
+#optimizer =  SGDMomentum(lr = 0.01, momentum = 0.9)
+
+trainer = Trainer(sigmoid_neural_network, optimizer)
+
+#sys.exit()
+
+trainer.fit(X_train, y_train, X_test, y_test, batch_size = 32, epochs = 50, eval_every = 1, seed = 20190501)
 P_sigmoid =  sigmoid_neural_network.forward(X_test)
 regression_model_errors(sigmoid_neural_network, X_test, y_test)
+
+print("%"*100)
+
+
+'''
 print("#"*80)
+
 trainer = Trainer(deep_learning_network, SGD(lr = 0.01))
 trainer.fit(X_train, y_train, X_test, y_test, epochs = 50, eval_every = 10, seed = 20190501)
 P_deep =  deep_learning_network.forward(X_test)
@@ -154,3 +172,5 @@ if (make_plots):
     plt.title("Deep")
 
     plt.show()
+
+'''
